@@ -1,7 +1,7 @@
 [
 {
     "domain": ".instagram.com",
-    "expirationDate": 1808560230.519493,
+    "expirationDate": 1812074429.061542,
     "hostOnly": false,
     "httpOnly": false,
     "name": "csrftoken",
@@ -10,12 +10,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "I6V30Hla7LgBHOQesFwVJmzGAptM5GAI",
+    "value": "qkLf51cmOWNA4orE7JwIYWMC9Yu5wF7I",
     "id": 1
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1791356613.833695,
+    "expirationDate": 1809438778.957694,
     "hostOnly": false,
     "httpOnly": true,
     "name": "datr",
@@ -24,12 +24,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "xZa2aNxFsciF3MALcfXVC04t",
+    "value": "OoDKaXIM0RF6KX_i0mPh0edP",
     "id": 2
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1781776230.51958,
+    "expirationDate": 1785290429.061658,
     "hostOnly": false,
     "httpOnly": false,
     "name": "ds_user_id",
@@ -38,12 +38,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "76140128219",
+    "value": "33222274408",
     "id": 3
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1788332613.433611,
+    "expirationDate": 1806414778.957705,
     "hostOnly": false,
     "httpOnly": true,
     "name": "ig_did",
@@ -52,40 +52,26 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "5E9228B5-593A-47CD-A3E7-58FEBBF1C8BF",
+    "value": "1BF37491-BE65-45FA-91B6-005FD1318312",
     "id": 4
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1788332627.879009,
+    "expirationDate": 1809438778.957715,
     "hostOnly": false,
-    "httpOnly": false,
-    "name": "ig_nrcb",
+    "httpOnly": true,
+    "name": "mid",
     "path": "/",
-    "sameSite": "unspecified",
+    "sameSite": "no_restriction",
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "1",
+    "value": "acqAOgAEAAFUpmmcwf8pRQCicFDM",
     "id": 5
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1791356627.878949,
-    "hostOnly": false,
-    "httpOnly": false,
-    "name": "mid",
-    "path": "/",
-    "sameSite": "unspecified",
-    "secure": true,
-    "session": false,
-    "storeId": "0",
-    "value": "aLaW0wAEAAFfTTpHyoqgR1Vpsg7V",
-    "id": 6
-},
-{
-    "domain": ".instagram.com",
-    "expirationDate": 1792639529.010559,
+    "expirationDate": 1809574060.992112,
     "hostOnly": false,
     "httpOnly": true,
     "name": "ps_l",
@@ -95,11 +81,11 @@
     "session": false,
     "storeId": "0",
     "value": "1",
-    "id": 7
+    "id": 6
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1792639529.010699,
+    "expirationDate": 1809574060.992256,
     "hostOnly": false,
     "httpOnly": true,
     "name": "ps_n",
@@ -109,7 +95,7 @@
     "session": false,
     "storeId": "0",
     "value": "1",
-    "id": 8
+    "id": 7
 },
 {
     "domain": ".instagram.com",
@@ -121,12 +107,12 @@
     "secure": true,
     "session": true,
     "storeId": "0",
-    "value": "\"HIL\\05476140128219\\0541805536230:01fed75669e8718c19e9dfc9633a4a2814b70f183215bd669fb0c1895396d55a7c62b412\"",
-    "id": 9
+    "value": "\"EAG\\05433222274408\\0541809050428:01fe8341e7bf65bd71ae3eb586eb0e7402cd6468d7454ff59c99cdefbbe4a3487514bcf2\"",
+    "id": 8
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1805534724.930993,
+    "expirationDate": 1809050342.346784,
     "hostOnly": false,
     "httpOnly": true,
     "name": "sessionid",
@@ -135,12 +121,12 @@
     "secure": true,
     "session": false,
     "storeId": "0",
-    "value": "76140128219%3AxFc93LnV2cDaMz%3A3%3AAYhcTlSU4zobi0CatLf1mU531QKLv4Gr9oKD2IOXdg",
-    "id": 10
+    "value": "33222274408%3AGqHlgK2n8wTpos%3A29%3AAYhxBen5PrgtW3bwLh5UlFZ4gR5FKX3UB6iaqGi_VQ",
+    "id": 9
 },
 {
     "domain": ".instagram.com",
-    "expirationDate": 1774603573,
+    "expirationDate": 1778119215,
     "hostOnly": false,
     "httpOnly": false,
     "name": "wd",
@@ -150,6 +136,6 @@
     "session": false,
     "storeId": "0",
     "value": "1710x985",
-    "id": 11
+    "id": 10
 }
 ]
