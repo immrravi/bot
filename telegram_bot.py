@@ -202,6 +202,61 @@ async def sendmsg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Error in sendmsg command: {e}")
         await update.message.reply_text(f"❌ An error occurred: {str(e)}")
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin command to broadcast message to multiple users."""
+
+    user_id = update.effective_user.id
+
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
+
+    try:
+        # Example:
+        # /broadcast 12345,67890,11111 Hello everyone
+
+        full_text = update.message.text.replace("/broadcast ", "", 1)
+
+        ids_part, message_text = full_text.split(" ", 1)
+
+        user_ids = [int(uid.strip()) for uid in ids_part.split(",")]
+
+        if not message_text.strip():
+            await update.message.reply_text("❌ Message cannot be empty.")
+            return
+
+        success = 0
+        failed = 0
+
+        for target_user_id in user_ids:
+            try:
+                await context.bot.send_message(
+                    chat_id=target_user_id,
+                    text=message_text
+                )
+
+                success += 1
+
+                # Prevent Telegram flood limits
+                await asyncio.sleep(0.1)
+
+            except Exception as e:
+                logging.error(f"Failed to send message to {target_user_id}: {e}")
+                failed += 1
+
+        await update.message.reply_text(
+            f"✅ Broadcast completed\n\n"
+            f"Success: {success}\n"
+            f"Failed: {failed}"
+        )
+
+    except Exception as e:
+        logging.error(f"Error in broadcast command: {e}")
+
+        await update.message.reply_text(
+            "Usage:\n"
+            "/broadcast user1,user2,user3 Your message"
+        )
 
 # =========================
 # MESSAGE HANDLERS
@@ -232,6 +287,7 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
 async def run_scraping_task(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
     """The actual scraping task that runs concurrently."""
     user_id = update.effective_user.id
+
     
     # Check for cookies.json
     if not os.path.exists('cookies.json'):
@@ -339,6 +395,7 @@ def main():
     application.add_handler(CommandHandler("deductcredit", deductcredit))
     application.add_handler(CommandHandler("setcredit", setcredit))
     application.add_handler(CommandHandler("sendmsg", sendmsg))
+    application.add_handler(CommandHandler("broadcast", broadcast))
     
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE | filters.Document.PDF, handle_payment_proof))
