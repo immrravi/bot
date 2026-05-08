@@ -202,61 +202,6 @@ async def sendmsg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Error in sendmsg command: {e}")
         await update.message.reply_text(f"❌ An error occurred: {str(e)}")
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Admin command to broadcast message to multiple users."""
-
-    user_id = update.effective_user.id
-
-    if user_id != ADMIN_ID:
-        await update.message.reply_text("❌ You are not authorized to use this command.")
-        return
-
-    try:
-        # Example:
-        # /broadcast 12345,67890,11111 Hello everyone
-
-        full_text = update.message.text.replace("/broadcast ", "", 1)
-
-        ids_part, message_text = full_text.split(" ", 1)
-
-        user_ids = [int(uid.strip()) for uid in ids_part.split(",")]
-
-        if not message_text.strip():
-            await update.message.reply_text("❌ Message cannot be empty.")
-            return
-
-        success = 0
-        failed = 0
-
-        for target_user_id in user_ids:
-            try:
-                await context.bot.send_message(
-                    chat_id=target_user_id,
-                    text=message_text
-                )
-
-                success += 1
-
-                # Prevent Telegram flood limits
-                await asyncio.sleep(0.1)
-
-            except Exception as e:
-                logging.error(f"Failed to send message to {target_user_id}: {e}")
-                failed += 1
-
-        await update.message.reply_text(
-            f"✅ Broadcast completed\n\n"
-            f"Success: {success}\n"
-            f"Failed: {failed}"
-        )
-
-    except Exception as e:
-        logging.error(f"Error in broadcast command: {e}")
-
-        await update.message.reply_text(
-            "Usage:\n"
-            "/broadcast user1,user2,user3 Your message"
-        )
 
 # =========================
 # MESSAGE HANDLERS
@@ -270,31 +215,39 @@ async def handle_payment_proof(update: Update, context: ContextTypes.DEFAULT_TYP
     admin_message = f"🔔 **New Payment Proof Received!**\n\n" \
                     f"👤 User: {user.full_name} (@{username})\n" \
                     f"🆔 User ID: `{user_id}`\n"
-    if update.message.text:
-        admin_message += f"📝 Message/UTR: {update.message.text}"
-        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_message)
-    elif update.message.photo:
-        photo_file_id = update.message.photo[-1].file_id
-        await context.bot.send_photo(chat_id=ADMIN_ID, photo=photo_file_id, caption=admin_message)
-    elif update.message.document:
-        doc_file_id = update.message.document.file_id
-        await context.bot.send_document(chat_id=ADMIN_ID, document=doc_file_id, caption=admin_message)
-    await update.message.reply_text(
-        "✅ Thank you! Your payment proof has been sent to the admin for verification. "
-        "Credits will be added to your account shortly."
-    )
+    
+    try:
+        if update.message.text:
+            admin_message += f"📝 Message/UTR: {update.message.text}"
+            await context.bot.send_message(chat_id=ADMIN_ID, text=admin_message, parse_mode=ParseMode.MARKDOWN)
+        elif update.message.photo:
+            photo_file_id = update.message.photo[-1].file_id
+            await context.bot.send_photo(chat_id=ADMIN_ID, photo=photo_file_id, caption=admin_message, parse_mode=ParseMode.MARKDOWN)
+        elif update.message.document:
+            doc_file_id = update.message.document.file_id
+            await context.bot.send_document(chat_id=ADMIN_ID, document=doc_file_id, caption=admin_message, parse_mode=ParseMode.MARKDOWN)
+        
+        await update.message.reply_text(
+            "✅ Thank you! Your payment proof has been sent to the admin for verification. "
+            "Credits will be added to your account shortly."
+        )
+    except Exception as e:
+        logging.error(f"Error forwarding payment proof: {e}")
+        await update.message.reply_text("❌ Failed to forward payment proof to admin. Please try again later.")
 
-async def run_scraping_task(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+async def run_scraping_task(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str, last_link: str = None):
     """The actual scraping task that runs concurrently."""
     user_id = update.effective_user.id
-
     
     # Check for cookies.json
     if not os.path.exists('cookies.json'):
         await update.message.reply_text("⚠️ Error: 'cookies.json' not found on the server.")
         return
 
-    status_message = await update.message.reply_text("🔍 Valid URL received! Waiting for a slot in the concurrent queue...")
+    if last_link:
+        status_message = await update.message.reply_text("🔍 Excel file received! Waiting for a slot in the concurrent queue...")
+    else:
+        status_message = await update.message.reply_text("🔍 Valid URL received! Waiting for a slot in the concurrent queue...")
     
     async with SCRAPING_SEMAPHORE:
         await status_message.edit_text("🚀 Slot acquired! Starting the scraping process... This may take a few minutes.")
@@ -304,11 +257,15 @@ async def run_scraping_task(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         
         try:
             await scraper.init_browser(headless=True)
-            await status_message.edit_text("⏳ Extracting reel info (username and date)...")
-            username, target_date = await scraper.get_reel_info(text)
+            await status_message.edit_text("⏳ Extracting profile info...")
+            username, _ = await scraper.get_reel_info(text)
             
-            await status_message.edit_text(f"👤 User: @{username}\n📅 Target Date: {target_date.strftime('%Y-%m-%d')}\n\n🔄 Collecting reels...")
-            reels_data = await scraper.scrape_profile_reels(username, text)
+            if last_link:
+                await status_message.edit_text(f"👤 User: @{username}\n🔄 Collecting reels between the specified links...")
+            else:
+                await status_message.edit_text(f"👤 User: @{username}\n🔄 Collecting all reels uploaded after the target reel...")
+                
+            reels_data = await scraper.scrape_profile_reels(username, text, last_link)
             
             if not reels_data:
                 await status_message.edit_text("ℹ️ No new reels found after the target date.")
@@ -357,6 +314,116 @@ async def run_scraping_task(update: Update, context: ContextTypes.DEFAULT_TYPE, 
                 try: os.remove(output_file)
                 except: pass
 
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle incoming document (Excel) uploads."""
+    document = update.message.document
+    if document and document.file_name and document.file_name.endswith('.xlsx'):
+        user_id = update.effective_user.id
+        
+        current_credits = await asyncio.to_thread(get_user_balance, user_id)
+        if current_credits < 1:
+            await update.message.reply_text("❌ Insufficient credits! Use /buy to purchase more.")
+            return
+
+        file = await context.bot.get_file(document.file_id)
+        file_path = f"input_{user_id}_{int(asyncio.get_event_loop().time())}.xlsx"
+        await file.download_to_drive(file_path)
+        
+        try:
+            import pandas as pd
+            from excel import read_grouped_links_from_excel
+
+            all_grouped_links = read_grouped_links_from_excel(file_path)
+            if not all_grouped_links:
+                await update.message.reply_text("❌ Error: No valid groups of links found in the Excel file. Ensure links are in the first column and groups are separated by two blank rows.")
+                return
+
+            all_results = []
+            scraper = InstagramScraper(cookies_path='cookies.json')
+            output_file = f"reels_{user_id}_{int(asyncio.get_event_loop().time())}.xlsx"
+
+            try:
+                await scraper.init_browser(headless=True)
+                status_message = await update.message.reply_text("🚀 Slot acquired! Starting the scraping process for multiple groups... This may take a while.")
+
+                for i, links_group in enumerate(all_grouped_links):
+                    await status_message.edit_text(f"🔄 Processing Group {i+1}/{len(all_grouped_links)}...")
+                    if not links_group:
+                        print(f"Skipping empty group {i+1}.")
+                        continue
+
+                    first_link = links_group[0]
+                    last_link = links_group[-1]
+
+                    if not is_valid_reel_url(first_link) or not is_valid_reel_url(last_link):
+                        await update.message.reply_text(f"❌ Error: One or more links in group {i+1} are invalid Instagram Reel URLs.\nFirst: {first_link}\nLast: {last_link}\nSkipping this group.")
+                        continue
+
+                    try:
+                        username, _ = await scraper.get_reel_info(first_link)
+                        reels_data = await scraper.scrape_profile_reels(username, first_link, last_link)
+                        
+                        if reels_data:
+                            all_results.extend(reels_data)
+                            await status_message.edit_text(f"✅ Collected {len(reels_data)} reels for group {i+1}. Total collected: {len(all_results)}")
+                        else:
+                            await status_message.reply_text(f"ℹ️ No reels found for group {i+1} between {first_link} and {last_link}.")
+
+                    except Exception as e:
+                        await update.message.reply_text(f"❌ An error occurred during scraping for group {i+1}: {e}")
+
+                if not all_results:
+                    await update.message.reply_text("ℹ️ No reels found across all groups.")
+                    return
+
+                total_reels = len(all_results)
+                total_cost = total_reels * REEL_COST_PER_ITEM
+                
+                current_credits = await asyncio.to_thread(get_user_balance, user_id)
+                if current_credits < total_cost:
+                    await update.message.reply_text(
+                        f"❌ Found {total_reels} reels, which costs {total_cost} credits. "
+                        f"However, you only have {current_credits} credits."
+                    )
+                    return
+
+                success_deduct = await asyncio.to_thread(deduct_credits, user_id, total_cost)
+                if not success_deduct:
+                    await update.message.reply_text("❌ Failed to deduct credits. Please check your balance.")
+                    return
+                    
+                new_balance = await asyncio.to_thread(get_user_balance, user_id)
+                
+                await update.message.reply_text(f"📊 Found {total_reels} reels. Deducted {total_cost} credits. Your new balance: {new_balance} credits.\nGenerating Excel file...")
+                success_export = await asyncio.to_thread(export_to_excel, all_results, output_file)
+                
+                if success_export:
+                    await update.message.reply_text(f"✅ Done! Collected {total_reels} reels. Sending the file...")
+                    with open(output_file, 'rb') as f:
+                        await update.message.reply_document(document=f, filename="reels_output.xlsx")
+                    await update.message.reply_text(
+                        f"✅ Task completed!\n\n📊 Reels collected: {total_reels}\n💸 Credits used: {total_cost}\n💳 Remaining balance: {new_balance} credits"
+                    )
+                else:
+                    await asyncio.to_thread(add_credits, user_id, total_cost)
+                    await update.message.reply_text("❌ Failed to export data to Excel. Your credits have been refunded.")
+
+            except Exception as e:
+                await update.message.reply_text(f"❌ An error occurred during Excel processing: {e}")
+            finally:
+                await scraper.close()
+                if os.path.exists(output_file):
+                    try: os.remove(output_file)
+                    except: pass
+
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error processing Excel file: {str(e)}")
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+    else:
+        await handle_payment_proof(update, context)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle incoming messages and start scraping tasks concurrently."""
     user_id = update.effective_user.id
@@ -395,10 +462,9 @@ def main():
     application.add_handler(CommandHandler("deductcredit", deductcredit))
     application.add_handler(CommandHandler("setcredit", setcredit))
     application.add_handler(CommandHandler("sendmsg", sendmsg))
-    application.add_handler(CommandHandler("broadcast", broadcast))
     
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    application.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE | filters.Document.PDF, handle_payment_proof))
+    application.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE | filters.Document.PDF | filters.Document.FileExtension("xlsx"), handle_document))
     print("Bot is starting...")
     application.run_polling()
 
