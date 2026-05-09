@@ -175,14 +175,21 @@ class InstagramScraper:
             finally:
                 await new_page.close()
 
-    async def scrape_profile_reels(self, username, target_reel_url):
+    async def scrape_profile_reels(self, username, target_reel_url, last_reel_url=None):
         """
         Visit profile reels section and scrape all reels uploaded after target_reel_url.
+        If last_reel_url is provided, it starts collecting from the newest reels but 
+        stops immediately once last_reel_url is reached (since profile is newest to oldest).
         Optimized for speed and ensures chronological sorting by using discovery order.
         """
         target_reel_id_match = re.search(r'/reels?/([^/]+)', target_reel_url)
         target_reel_id = target_reel_id_match.group(1) if target_reel_id_match else ""
         
+        last_reel_id = None
+        if last_reel_url:
+            last_reel_id_match = re.search(r'/reels?/([^/]+)', last_reel_url)
+            last_reel_id = last_reel_id_match.group(1) if last_reel_id_match else None
+
         profile_reels_url = f"https://www.instagram.com/{username}/reels/"
         print(f"Visiting profile: {profile_reels_url}")
         await self.page.goto(profile_reels_url, wait_until="domcontentloaded")
@@ -194,9 +201,10 @@ class InstagramScraper:
         max_scroll_attempts = 200 
         scroll_attempt = 0
         found_target = False
+        found_last = False
         consecutive_no_new = 0
         
-        print("Scrolling profile and collecting reels until target is reached...")
+        print("Scrolling profile and collecting reels...")
         
         # Optimization: Use JS to extract all reels at once from the DOM
         extraction_js = """
@@ -231,10 +239,25 @@ class InstagramScraper:
                     reel_id = reel_id_match.group(1) if reel_id_match else ""
                     
                     if reel_id == target_reel_id:
-                        print(f"Target reel found! (ID: {reel_id})")
+                        print(f"Target reel (oldest) found! (ID: {reel_id})")
                         found_target = True
                         break
                     
+                    # If we have a last_reel_id, we only start collecting once we see it
+                    # Actually, the profile is Newest -> Oldest.
+                    # target_reel_url is the OLDEST (first row).
+                    # last_reel_url is the LATEST (last row).
+                    # So we should collect everything from the top (newest) UNTIL we hit target_reel_id.
+                    # BUT we should ONLY keep reels that are between last_reel_id and target_reel_id.
+                    
+                    if last_reel_id and not found_last:
+                        if reel_id == last_reel_id:
+                            print(f"Last reel (latest) found! Starting collection from here. (ID: {reel_id})")
+                            found_last = True
+                        else:
+                            # Skip reels newer than the last_link from Excel
+                            continue
+
                     # Extract views from data
                     views = 0
                     view_match = re.search(r'([\d.MK,]+)\s*(?:views|plays|view|play)', data['ariaLabel'], re.IGNORECASE)
@@ -278,7 +301,10 @@ class InstagramScraper:
             scroll_attempt += 1
 
         if not found_target:
-            print(f"Warning: Target reel was not found in the profile after {scroll_attempt} scrolls.")
+            print(f"Warning: Target reel (oldest) was not found in the profile after {scroll_attempt} scrolls.")
+        
+        if last_reel_id and not found_last:
+            print(f"Warning: Last reel (latest) was not found in the profile.")
 
         # Optimization: Parallel date fetching with a limit to avoid blocks
         print(f"Fetching exact dates for {len(all_collected_reels)} reels in parallel...")
