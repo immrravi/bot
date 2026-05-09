@@ -55,3 +55,63 @@ def export_to_excel(data, filename='reels_output.xlsx'):
     except Exception as e:
         print(f"Error exporting to Excel: {e}")
         return False
+
+def read_grouped_links_from_excel(filepath):
+    """
+    Reads an Excel file, parses links into groups separated by two blank rows.
+    Automatically finds the 'link' column and skips headers.
+    Returns a list of lists, where each inner list is a group of links.
+    """
+    try:
+        # Read the entire sheet without headers first to find the 'link' column
+        df_raw = pd.read_excel(filepath, header=None)
+        
+        # Find the column index that contains 'link' (case-insensitive)
+        link_col_idx = -1
+        start_row = 0
+        
+        for r in range(min(5, len(df_raw))): # Check first 5 rows for header
+            for c in range(len(df_raw.columns)):
+                val = str(df_raw.iloc[r, c]).strip().lower()
+                if val == 'link':
+                    link_col_idx = c
+                    start_row = r + 1 # Data starts after the header row
+                    break
+            if link_col_idx != -1:
+                break
+        
+        # If 'link' header not found, default to first column and start from row 0
+        if link_col_idx == -1:
+            print("Warning: 'link' column header not found. Defaulting to the first column.")
+            link_col_idx = 0
+            start_row = 0
+
+        grouped_links = []
+        current_group = []
+        blank_row_count = 0
+
+        # Iterate through the rows starting from the data row
+        for index in range(start_row, len(df_raw)):
+            cell_value = df_raw.iloc[index, link_col_idx]
+            
+            if pd.isna(cell_value) or str(cell_value).strip() == '':
+                blank_row_count += 1
+                if blank_row_count >= 2 and current_group:
+                    grouped_links.append(current_group)
+                    current_group = []
+                    blank_row_count = 0
+                continue
+            else:
+                blank_row_count = 0
+                link = str(cell_value).strip()
+                # Basic validation to skip headers if they were accidentally included
+                if link.lower() != 'link' and 'instagram.com' in link:
+                    current_group.append(link)
+        
+        if current_group:
+            grouped_links.append(current_group)
+
+        return grouped_links
+    except Exception as e:
+        print(f"Error reading grouped links: {e}")
+        return []
